@@ -1,16 +1,12 @@
 const csv = require('csv-parser')
 const { Readable} = require('stream');
 
-//this will check the no. of rows pressent also will * file...
-
-
-
-
 
 
 const processCsv = (fileBuffer, requiredHeaders) =>{
         return new Promise((resolve, reject) =>{
-                let rowCount = 0;
+                // let rowCount = 0;
+                const validatedRows = [];
 
                 let isfirstRow = true;
 
@@ -29,7 +25,7 @@ const processCsv = (fileBuffer, requiredHeaders) =>{
                 const needed = requiredHeaders[i];
 
 
-                if(!csvHeaders.includes(needed)){         //must check if header is in CsvHeaders..
+                if(!csvHeaders.includes(needed)){         //must check if header is in csvHeaders..
                         stream.destroy();
 
                         return reject(new Error(`Header "${needed}" is missing`))
@@ -40,12 +36,42 @@ const processCsv = (fileBuffer, requiredHeaders) =>{
            isfirstRow = false;
         }
 
+
+        //validate Rows with
+        
+           const remarks =[];
+           let j = 0;
+        
+        while(j<requiredHeaders.length){
+           const column = requiredHeaders[j];
+           const value = row[column]; 
+           
+           
+           if(value === null || value=== undefined || value === ''){
+                remarks.push(`${column} is empty`);
+
+           }else 
+                if(value === '0' || value === 0){
+                        remarks.push(`${column} is zero`)
+                }
+                j++;
+        }                
+            row.remarks = remarks.length>0 ? remarks.join('; ') : ' ';
+                 validatedRows.push(row);
+
+          if(row.remarks){
+                console.log(`Row ${validatedRows.length}: ${row.remarks}`)
+          }
+
+
         //      rowCount++;
         //     console.log('Row:', row); 
        })
       .on('end', () => {
         // resolve(`Total rows: ${rowCount}`);
-         resolve('Headers validated successfully!');
+        //  resolve('Headers validated successfully!');
+         console.log(`Total rows processed: ${validatedRows.length}`);
+        resolve(validatedRows);
        })
       .on('error', reject);
         })

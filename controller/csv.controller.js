@@ -12,9 +12,14 @@ const validateCsv = async (req, res) =>{
  const requiredHeaders = ['ID', 'Year', 'Date', 'Stage', 'Home Team', 'Away Team', 'Host Team'];
 
     
-    const result = await csvService.processCsv(fileBuffer, requiredHeaders);
+    const validatedRows = await csvService.processCsv(fileBuffer, requiredHeaders);
     console.log(requiredHeaders)
-    res.send(result);
+//     res.send(result);
+res.json({
+     message: 'Validation complete!',
+     totalRows: validatedRows.length,
+      rows: validatedRows
+})
 
     
   } catch (error) {
