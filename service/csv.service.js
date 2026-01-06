@@ -1,84 +1,86 @@
-const csv = require('csv-parser')
-const { Readable} = require('stream');
+const csv = require('csv-parser');
+const { Readable, Transform } = require('stream');
 
 
+exports.processCSV = (fileBuffer, requiredHeaders) => {
+  
+  let isFirstRow = true;
+  let rowCount = 0;
+  
+  // Create transform stream that processes one row at a time
+  const validateStream = new Transform({
+    objectMode: true,
+    // highWaterMark:100,
 
-const processCsv = (fileBuffer, requiredHeaders) =>{
-        return new Promise((resolve, reject) =>{
-
-                // let rowCount = 0;
-                const validatedRows = [];
-
-                let isfirstRow = true;
-
-                const stream = Readable.from(fileBuffer);
-              stream
-           .pipe(csv())
-           .on('data', (row) => {
-
-              if(isfirstRow){
-                const csvHeaders = Object.keys(row)
-                console.log('CSV Headers:', csvHeaders);
-          console.log('Required Headers:', requiredHeaders);
-
-              let i=0;
-              while(i< requiredHeaders.length){
-                const needed = requiredHeaders[i];
-
-
-                if(!csvHeaders.includes(needed)){         //must check if header is in csvH..
-                        stream.destroy();
-
-                        return reject(new Error(`Header "${needed}" is missing`))
-                }
-                i++;
-              }
-           console.log('All Headers present')
-           isfirstRow = false;
-        }
-
-
-        //validate Rows with
+    transform(row, encoding, callback) {
+      
+      if (isFirstRow) {
+        const csvHeaders = Object.keys(row); 
         
-           const remarks =[];
-           let j = 0;
+        console.log('Checking headers...');
         
-        while(j<requiredHeaders.length){
-           const column = requiredHeaders[j];
-              const value = row[column]?.toString().trim();
-           
-           
-
-           if(value === null || value=== undefined || value === ''){
-                remarks.push(`${column} is empty`);
-
-           }else 
-                if(value === '0' || value === 0){
-                        remarks.push(`${column} is zero`)
-                }
-                j++;
-        }                
-            row.remarks = remarks.length>0 ? remarks.join('; ') : ' ';
-                 validatedRows.push(row);
-
-          if(row.remarks){
-                console.log(`Row ${validatedRows.length}: ${row.remarks}`)
-          }
-
-
-        //      rowCount++;
-        //     console.log('Row:', row); 
-       })
-      .on('end', () => {
-        // resolve(`Total rows: ${rowCount}`);
-        //  resolve('Headers validated successfully!');
-         console.log(`Total rows processed: ${validatedRows.length}`);
-        resolve(validatedRows);
-       })
-      .on('error', reject);
-        })
+        let i = 0;
+        while (i < requiredHeaders.length) {
+          const needed = requiredHeaders[i];
+          
+          if (!csvHeaders.includes(needed)) {
+            return callback(new Error(`Header "${needed}" is missing`));
+          }   
+          
+          i++;
         }
+    
+        // console.log('Headers OK');
+        isFirstRow = false;
+      }
+      
+      // STEP 2: Validate this row
+      const remarks = [];
+      
+      let j = 0;
+      while (j < requiredHeaders.length) {
+        const column = requiredHeaders[j];
+      const value = row[column];
 
-        module.exports = {
-                processCsv
-        }
+    if (value === null || value === undefined || value === '' || value === 'null' || value === 'NULL') {
+      remarks.push(`${column} is empty`);
+    }
+      if (value === '0' || value === 0) {
+      remarks.push(`${column} is zero`);
+    }
+    
+    j++;
+  }
+       
+
+
+      // Add remarks to row
+      row.remarks = remarks.length > 0 ? remarks.join('; ') : '';
+      
+      rowCount++;
+      // Send this row immediately (no storage!)
+//       this.push(row);
+//       callback(); //backpressure next row 
+
+//for ensuring all columns
+callback(null, row);
+    },
+    
+    final(callback) {
+      console.log(`Total rows processed: ${rowCount}`);
+      callback();
+    }
+  });
+  
+  // Return the stream (not array!)
+  const readStream = Readable.from(fileBuffer);
+  return readStream.pipe(csv()).pipe(validateStream);
+};
+
+
+
+
+ 
+
+
+

@@ -1,4 +1,6 @@
 const  csvService = require('../service/csv.service')
+const { stringify } = require('csv-stringify');
+const { pipeline } = require('stream/promises');
 
 const validateCsv = async (req, res) =>{
       try {
@@ -6,31 +8,39 @@ const validateCsv = async (req, res) =>{
       return res.status(400).send('Please upload a file');
     }
     
-    const fileBuffer = req.file.buffer;
+ const requiredHeaders = ['ID', 'Year', 'Date', 'Stage', 'Home Team','Home Goals', 'Away Goals', 'Away Team','Win Conditions','Host Team'];
+
     
+   const validatedRows = await csvService.processCSV(req.file.buffer, requiredHeaders);
+
    
- const requiredHeaders = ['ID', 'Year', 'Date', 'Stage', 'Home Team', 'Away Team', 'Host Team'];
 
+   res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=validated.csv');
     
-    const validatedRows = await csvService.processCsv(fileBuffer, requiredHeaders);
-//     console.log(requiredHeaders)
-//     res.send(result);
-res.json({
-     message: 'Validation complete!',
-     totalRows: validatedRows.length,
-      rows: validatedRows
-})
+    // Convert objects to CSV and pipe directly to response
 
-    
+
+    // validatedRows
+    //   .pipe(stringify({ header: true }))
+    //   .pipe(res);
+       await pipeline(   //lightweight
+      validatedRows,
+      stringify({ header: true }),
+      res
+    );
+
+// res.json({ success: true, totalRows: validatedRows.length, data: validatedRows });
+           
+
+
+
   } catch (error) {
     res.status(400).send('Error: ' + error.message);
   }
 };
 
-
-
-
-
 module.exports = {
         validateCsv
 }
+

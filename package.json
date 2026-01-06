@@ -12,7 +12,10 @@
   },
   "dependencies": {
     "csv-parser": "^3.2.0",
+    "csv-stringify": "^6.6.0",
     "express": "^5.2.1",
+    "fast-csv": "^5.0.5",
+    "fs": "^0.0.1-security",
     "multer": "^2.0.2"
   }
 }
